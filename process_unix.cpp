@@ -13,7 +13,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     stdout_fd=std::unique_ptr<fd_type>(new fd_type);
   if(read_stderr)
     stderr_fd=std::unique_ptr<fd_type>(new fd_type);
-  
+
   int stdin_p[2], stdout_p[2], stderr_p[2];
 
   if(stdin_fd && pipe(stdin_p)!=0) {
@@ -31,7 +31,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     close(stderr_p[0]);close(stderr_p[1]);
     return -1;
   }
-  
+
   id_type pid = fork();
 
   if (pid < 0) {
@@ -48,15 +48,15 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     if(stdout_fd) {close(stdout_p[0]);close(stdout_p[1]);}
     if(stderr_fd) {close(stderr_p[0]);close(stderr_p[1]);}
 
-    //Based on http://stackoverflow.com/a/899533/3808293
+    /*//Based on http://stackoverflow.com/a/899533/3808293
     int fd_max=sysconf(_SC_OPEN_MAX);
     for(int fd=3;fd<fd_max;fd++)
-      close(fd);
+      close(fd);*/
 
-    setpgid(0, 0);
+    //setpgid(0, 0);
     //TODO: See here on how to emulate tty for colors: http://stackoverflow.com/questions/1401002/trick-an-application-into-thinking-its-stdin-is-interactive-not-a-pipe
     //TODO: One solution is: echo "command;exit"|script -q /dev/null
-    
+
     if(!path.empty()) {
       auto path_escaped=path;
       size_t pos=0;
@@ -65,18 +65,18 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
         path_escaped.replace(pos, 1, "'\\''");
         pos+=4;
       }
-      execl("/bin/sh", "sh", "-c", ("cd '"+path_escaped+"' && "+command).c_str(), NULL);
+      execl("/bin/sh", "/bin/sh", "-c", ("cd '"+path_escaped+"' && "+command).c_str(), NULL);
     }
     else
-      execl("/bin/sh", "sh", "-c", command.c_str(), NULL);
-    
+      execl("/bin/sh", "/bin/sh", "-c", command.c_str(), NULL);
+
     _exit(EXIT_FAILURE);
   }
 
   if(stdin_fd) close(stdin_p[0]);
   if(stdout_fd) close(stdout_p[1]);
   if(stderr_fd) close(stderr_p[1]);
-  
+
   if(stdin_fd) *stdin_fd = stdin_p[1];
   if(stdout_fd) *stdout_fd = stdout_p[0];
   if(stderr_fd) *stderr_fd = stderr_p[0];
@@ -115,9 +115,9 @@ int Process::get_exit_status() {
   close_mutex.lock();
   closed=true;
   close_mutex.unlock();
-  
+
   close_fds();
-  
+
   return exit_status;
 }
 
@@ -126,7 +126,7 @@ void Process::close_fds() {
     stdout_thread.join();
   if(stderr_thread.joinable())
     stderr_thread.join();
-  
+
   if(stdin_fd)
     close_stdin();
   if(stdout_fd) {
